@@ -1,0 +1,31 @@
+name: Sample Panel
+description: Example recipe for the smoke test
+uoa:
+  name: population
+  connector:
+    type: csv
+    path: base_population.csv
+  join_keys: ["id"]
+  timestamp_column: date
+  select: ["id", "date", "value"]
+datasets:
+  - name: attributes
+    connector:
+      type: csv
+      path: attributes.csv
+    join_keys: ["id"]
+    select: ["id", "segment"]
+  - name: transactions
+    connector:
+      type: csv
+      path: transactions.csv
+    join_keys: ["id"]
+    timestamp_column: date
+    select: ["id", "event_date", "amount"]
+    rename:
+      event_date: date
+    prefix: txn_
+output:
+  directory: output
+  file_name: sample_panel.xlsx
+  formats: ["excel"]
