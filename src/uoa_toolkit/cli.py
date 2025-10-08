@@ -12,6 +12,7 @@ except ModuleNotFoundError:  # pragma: no cover - exercised in tests
     from .typer_stub import typer
 
 from .config import load_recipe
+from .datasets import summarise_reports, validate_mgimo_datasets
 from .export import export_outputs
 from .joiner import build_panel
 from .llm import OpenRouterError, call_openrouter, democratic_peace_prompt
@@ -162,6 +163,51 @@ def auto_democratic_peace(
     )
 
     typer.echo(f"Generated democratic peace panel via OpenRouter into {recipe.output.directory}")
+
+
+@app.command("validate-mgimo")
+def validate_mgimo(
+    data_root: Path = typer.Argument(
+        Path("data/mgimo"),
+        help="Root directory that should contain MGIMO dataset downloads.",
+    ),
+    create_dirs: bool = typer.Option(
+        False,
+        "--create-dirs",
+        help="Create the expected directory structure if it is missing.",
+    ),
+    allow_empty: bool = typer.Option(
+        False,
+        "--allow-empty",
+        help="Do not treat empty dataset directories as an error (useful during setup).",
+    ),
+) -> None:
+    """Validate that MGIMO datasets have been downloaded into the workspace."""
+
+    reports = validate_mgimo_datasets(data_root, create_dirs=create_dirs)
+    missing_dirs, empty_dirs = summarise_reports(reports)
+
+    if missing_dirs:
+        typer.echo("Missing dataset directories:")
+        for report in missing_dirs:
+            typer.echo(f"  - {report.spec.title} [{report.spec.slug}] -> {report.directory}")
+
+    if empty_dirs:
+        prefix = "Warning" if allow_empty else "Datasets without recognised files"
+        typer.echo(f"{prefix}:")
+        for report in empty_dirs:
+            typer.echo(f"  - {report.spec.title} [{report.spec.slug}] -> {report.directory}")
+
+    if missing_dirs or (empty_dirs and not allow_empty):
+        typer.echo(
+            "Populate the directories with downloads from the MGIMO portal before running recipes.")
+        typer.echo("See data/README.md for the dataset catalogue and download guidance.")
+        raise SystemExit(1)
+
+    typer.echo("All MGIMO dataset directories present.")
+    if empty_dirs:
+        typer.echo(
+            "Directories are currently empty; add the official downloads when available.")
 
 
 if __name__ == "__main__":  # pragma: no cover

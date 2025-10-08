@@ -7,4 +7,5 @@ __all__ = [
     "manifest",
     "export",
     "llm",
+    "datasets",
 ]

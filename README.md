@@ -59,6 +59,21 @@ The command reads the `recipes/sample.yaml` file, joins the configured datasets,
 2. CSV connector paths can be absolute or relative to the recipe file.
 3. Optionally configure `select`, `rename`, or `prefix` to control the exported column names.
 
+### Working with MGIMO-sourced datasets
+
+The real-world datasets requested by the user (Polity IV, COW series, Archigos, etc.)
+are hosted on the MGIMO data portal and cannot be redistributed in this repository.
+Instead, reserve the `data/mgimo/` directory for the official downloads and validate
+your local copy with the helper command:
+
+```bash
+python -m uoa_toolkit.cli validate-mgimo data/mgimo --create-dirs
+```
+
+Re-run the command after copying the downloaded CSV/TSV/Parquet/Excel files into the
+matching subdirectories. The command prints any missing or empty dataset folders and
+references `data/README.md` for the full catalogue.
+
 ## Testing
 
 Run the test suite to verify the CLI flows end-to-end:
