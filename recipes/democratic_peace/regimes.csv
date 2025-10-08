@@ -1,0 +1,7 @@
+dyad_id,year,democracy_a,democracy_b,joint_democracy
+1,1990,1,1,1
+1,1991,1,1,1
+2,1990,1,0,0
+2,1991,1,0,0
+3,1990,1,1,1
+3,1991,1,1,1

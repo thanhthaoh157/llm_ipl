@@ -1,0 +1,7 @@
+dyad_id,year,state_a,state_b
+1,1990,USA,CAN
+1,1991,USA,CAN
+2,1990,USA,IRQ
+2,1991,USA,IRQ
+3,1990,FRA,GER
+3,1991,FRA,GER

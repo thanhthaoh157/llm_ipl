@@ -6,4 +6,5 @@ __all__ = [
     "joiner",
     "manifest",
     "export",
+    "llm",
 ]

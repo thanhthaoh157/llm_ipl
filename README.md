@@ -8,7 +8,8 @@ This repository contains a minimal, recipe-driven toolkit for building unit-of-a
 - Lightweight in-repo table engine that provides CSV ingestion, joins (including as-of joins), and export helpers without external dependencies.
 - Automated manifest and data dictionary generation.
 - Typer-style CLI (with an in-repo fallback implementation) that exports Excel, CSV, and Parquet outputs.
-- Smoke test that exercises the CLI end-to-end with sample data.
+- OpenRouter integration that can draft and execute a democratic peace recipe end-to-end.
+- Smoke tests that exercise both the static sample recipe and the OpenRouter-assisted workflow.
 
 ## Getting started
 
@@ -33,6 +34,25 @@ python -m uoa_toolkit.cli run recipes/sample.yaml --output-dir outputs
 
 The command reads the `recipes/sample.yaml` file, joins the configured datasets, and writes Excel/CSV/Parquet outputs (including a data dictionary and manifest sheets) into the `outputs/` directory.
 
+### Automating a democratic peace panel with OpenRouter
+
+1. Obtain an OpenRouter API key and expose it as `OPENROUTER_API_KEY` in your environment.
+2. Run the automated workflow:
+
+   ```bash
+   python -m uoa_toolkit.cli auto-democratic-peace --output-dir peace_outputs
+   ```
+
+   The CLI submits a structured prompt (`uoa_toolkit.llm.democratic_peace_prompt`) to OpenRouter, stores the returned YAML recipe, normalises connector paths to the `recipes/democratic_peace/` sample data, and exports Excel/CSV outputs ready for inspection.
+
+3. For offline or testing scenarios, reuse the bundled response without hitting the API:
+
+   ```bash
+   python -m uoa_toolkit.cli auto-democratic-peace \
+       --response-path recipes/democratic_peace/openrouter_response.yaml \
+       --output-dir peace_outputs
+   ```
+
 ### Developing new recipes
 
 1. Copy the sample recipe file and update dataset paths, join keys, and export preferences.
@@ -41,19 +61,19 @@ The command reads the `recipes/sample.yaml` file, joins the configured datasets,
 
 ## Testing
 
-Run the smoke test to verify the CLI end-to-end:
+Run the test suite to verify the CLI flows end-to-end:
 
 ```bash
 pytest
 ```
 
-The smoke test builds the sample panel in a temporary directory and confirms that the Excel output is generated.
+The tests build both the sample panel and the democratic peace panel in temporary directories and confirm that the Excel outputs are generated.
 
 ## Project structure
 
 - `pyproject.toml`: Project metadata and dependencies.
-- `src/uoa_toolkit/`: Source code for configuration, connectors, joins, exports, and CLI entry point.
-- `recipes/`: Example recipes and input data for quick verification.
+- `src/uoa_toolkit/`: Source code for configuration, connectors, joins, exports, LLM helpers, and CLI entry point.
+- `recipes/`: Example recipes, OpenRouter responses, and input data for quick verification.
 - `tests/`: Automated tests.
 
 ## License
