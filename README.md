@@ -8,6 +8,7 @@ This repository contains a minimal, recipe-driven toolkit for building unit-of-a
 - Lightweight in-repo table engine that provides CSV ingestion, joins (including as-of joins), and export helpers without external dependencies.
 - Automated manifest and data dictionary generation.
 - Typer-style CLI (with an in-repo fallback implementation) that exports Excel, CSV, and Parquet outputs.
+- FastAPI and Flask applications that expose the same recipe execution workflow over HTTP.
 - OpenRouter integration that can draft and execute a democratic peace recipe end-to-end.
 - Smoke tests that exercise both the static sample recipe and the OpenRouter-assisted workflow.
 
@@ -59,6 +60,35 @@ The command reads the `recipes/sample.yaml` file, joins the configured datasets,
 2. CSV connector paths can be absolute or relative to the recipe file.
 3. Optionally configure `select`, `rename`, or `prefix` to control the exported column names.
 
+### Serving the toolkit on the web
+
+The project provides both FastAPI and Flask front-ends. They expose identical endpoints: a
+landing page at `/` and an `/api/run` POST endpoint that accepts JSON with a `recipe_path`,
+optional `output_dir`, and optional `formats` array. Responses include the manifest metadata
+and the exported file locations.
+
+Run the FastAPI variant with Uvicorn:
+
+```bash
+uvicorn uoa_toolkit.web:create_fastapi_app --factory --reload
+```
+
+Or launch the Flask server:
+
+```bash
+flask --app uoa_toolkit.web:create_flask_app --debug run
+```
+
+Submit the sample recipe for processing with `curl` or similar tools:
+
+```bash
+curl -X POST http://127.0.0.1:8000/api/run \
+  -H "Content-Type: application/json" \
+  -d '{"recipe_path": "recipes/sample.yaml", "output_dir": "web_outputs"}'
+```
+
+The HTTP response lists the generated files and provides the dictionary and manifest records.
+
 ### Working with MGIMO-sourced datasets
 
 The real-world datasets requested by the user (Polity IV, COW series, Archigos, etc.)
@@ -76,7 +106,7 @@ references `data/README.md` for the full catalogue.
 
 ## Testing
 
-Run the test suite to verify the CLI flows end-to-end:
+Run the test suite to verify the CLI and web flows end-to-end:
 
 ```bash
 pytest
