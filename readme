@@ -1,1 +1,67 @@
+# LLM IPL 学习思路
 
+## 目标
+- 搭建对 LLM In-Context Prompt Learning（IPL）核心概念的整体理解框架。
+- 能够针对特定任务设计、评估与优化 Prompt，形成可复用的提示模板库。
+- 完成一个端到端的小型实验项目，从数据整理、Prompt 设计到效果评估的完整闭环。
+
+## 学习路线
+
+### 第 1 阶段：理论快速扫盲（1 周）
+1. **背景概念梳理**
+   - 什么是 In-Context Learning、Chain-of-Thought、ReAct 等提示策略。
+   - Prompt 的基本构成：角色设定、示例、约束、输出格式。
+2. **关键论文/博文速览**
+   - Brown et al., *Language Models are Few-Shot Learners*（ICL 基础）。
+   - Wei et al., *Chain-of-Thought Prompting Elicits Reasoning*。
+   - OpenAI、Anthropic 等官方 Prompt 指南。
+
+> 输出要求：用思维导图或表格总结各提示策略的触发条件与适用场景。
+
+### 第 2 阶段：工具熟悉与 Prompt 工程实践（2 周）
+1. **环境配置**
+   - 熟悉常用 LLM 接口（OpenAI、Anthropic、DeepSeek 等）与 Python SDK。
+   - 探索 LangChain、LlamaIndex 中的 Prompt 模块化抽象。
+2. **Prompt 设计实战**
+   - 针对至少 3 个任务（分类、生成、推理）分别设计 Zero-shot、Few-shot、CoT Prompt。
+   - 使用日志记录模板迭代过程，分析失败示例并总结修正策略。
+3. **自动化评估**
+   - 引入自动化打分（如 BLEU、ROUGE、Exact Match）或 LLM-as-a-judge。
+   - 学习如何构建对照实验，控制变量比较不同 Prompt 的效果。
+
+> 输出要求：沉淀「Prompt 设计备忘录」，记录高频模式与常见坑。
+
+### 第 3 阶段：小型项目闭环（1-2 周）
+1. **选题**
+   - 从个人兴趣或业务需求出发，选择一个真实问题（如 FAQ 自动回复、结构化数据抽取、教学问答）。
+2. **数据准备**
+   - 整理 30-50 条高质量示例，构建训练/验证/测试集。
+3. **方案实现**
+   - 设计基线 Prompt，并逐步引入多轮对话、工具调用、外部知识库等增强手段。
+4. **评估与复盘**
+   - 对比不同 Prompt 策略的效果；总结「做对了什么」「还可以优化什么」。
+
+> 输出要求：形成项目报告（背景、方法、实验结果、经验教训）。
+
+## 持续迭代机制
+- **知识管理**：使用 Notion/Obsidian 建立 Prompt 模板库与实验记录。
+- **社区参与**：定期关注 Papers with Code、OpenAI Cookbook、Prompt Engineering Guide 等资源。
+- **复盘节奏**：每两周整理一次学习成果，更新下一阶段目标。
+
+## 推荐资源
+- 课程：DeepLearning.AI 的 *Prompt Engineering for Developers*。
+- 工具：OpenAI Evals、Promptfoo、LangSmith。
+- 社区：Prompt Engineering Slack、微信群/Discord Prompt Club。
+
+---
+
+如需配合团队协作，可在项目根目录补充以下结构：
+```
+.
+├── prompts/              # Prompt 模板与迭代记录
+├── datasets/             # 示例数据与评估集
+├── notebooks/            # 实验脚本或分析 Notebook
+└── reports/              # 学习笔记与复盘报告
+```
+
+按照上述路线推进，可逐步建立系统化的 LLM IPL 学习能力，并形成可复用的知识资产。
