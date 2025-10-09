@@ -1,160 +1,151 @@
-# UOA Toolkit
+# International Relations Quantitative Analysis Toolkit
 
-This repository contains a minimal, recipe-driven toolkit for building unit-of-analysis (UOA) panels. Recipes describe input datasets, how to join them, and the export artefacts to produce.
+The **UOA Toolkit** packages everything needed to prototype country-level or dyadic
+panels for international relations research. Recipes describe the unit of analysis,
+inputs, join logic, and the desired export artefacts so complex data engineering
+flows can be reproduced with a single command.
 
-## Features
+## Why this toolkit?
 
-- Declarative YAML recipes parsed into strongly-typed dataclasses.
-- Lightweight in-repo table engine that provides CSV ingestion, joins (including as-of joins), and export helpers without external dependencies.
-- Automated manifest and data dictionary generation.
-- Typer-style CLI (with an in-repo fallback implementation) that exports Excel, CSV, and Parquet outputs.
-- FastAPI and Flask applications that expose the same recipe execution workflow over HTTP.
-- OpenRouter integration that can draft and execute a democratic peace recipe end-to-end.
-- Smoke tests that exercise both the static sample recipe and the OpenRouter-assisted workflow.
-- CLI commands that can emit ready-to-run Python snippets for downstream automation.
+- **Quant IR focus.** Bundled sample data and workflows mirror democratic peace
+  and regime-type studies, plus scaffolding for MGIMO-hosted sources such as
+  Polity, COW, Archigos, ATOP, and others listed in [`data/README.md`](data/README.md).
+- **Declarative recipes.** Structured YAML is parsed into Pydantic-style models
+  (`src/uoa_toolkit/config.py`) so joins, renames, filters, and exports are
+  validated before execution.
+- **Embedded execution engine.** Lightweight table utilities (based on Polars-like
+  operations) live in-repo, covering CSV ingestion, left and as-of joins, and
+  manifest/dictionary creation with no external database dependency.
+- **Automation everywhere.** The CLI can execute recipes, drive an
+  OpenRouter-powered democratic peace workflow, emit runnable Python scripts,
+  validate/download MGIMO datasets, or expose the same behaviour over FastAPI and
+  Flask.
 
-## Getting started
-
-### Prerequisites
-
-- Python 3.9 or later
-- `pip` for managing dependencies
-
-### Installation
+## Installation
 
 ```bash
 pip install -e .
 ```
 
-The repository vendors lightweight stand-ins for heavier dependencies so the project can run in constrained environments, but the published metadata still lists recommended packages such as Polars, DuckDB, Pydantic, and Typer.
+Python ≥3.9 is required. The project metadata declares recommended extras such
+as Polars, DuckDB, Pydantic, Typer, FastAPI, Flask, and Uvicorn; lightweight
+fallbacks are vendored so the toolkit works in restricted environments too.
 
-### Running the sample recipe
+## End-to-end workflow (country-year example)
 
-```bash
-python -m uoa_toolkit.cli run recipes/sample.yaml --output-dir outputs
-```
-
-The command reads the `recipes/sample.yaml` file, joins the configured datasets, and writes Excel/CSV/Parquet outputs (including a data dictionary and manifest sheets) into the `outputs/` directory.
-
-Need to embed the same workflow in another script? Ask the CLI to emit the equivalent Python code without executing the joins:
-
-```bash
-python -m uoa_toolkit.cli run recipes/sample.yaml --output-dir outputs --emit-code --dry-run
-```
-
-### Automating a democratic peace panel with OpenRouter
-
-1. Obtain an OpenRouter API key and expose it as `OPENROUTER_API_KEY` in your environment.
-2. Run the automated workflow:
-
+1. **Inspect the recipe.** `recipes/sample.yaml` specifies a country–year panel
+   combining population, trade, and attribute tables with a manifest definition.
+2. **Run the CLI.**
    ```bash
-   python -m uoa_toolkit.cli auto-democratic-peace --output-dir peace_outputs
+   python -m uoa_toolkit.cli run recipes/sample.yaml --output-dir outputs/sample
    ```
+3. **Review outputs.** The command generates:
+   - `panel.parquet`, `panel.csv`, and an Excel workbook with data, dictionary,
+     and manifest sheets.
+   - `manifest.json` describing provenance, joins, and exports.
 
-   The CLI submits a structured prompt (`uoa_toolkit.llm.democratic_peace_prompt`) to OpenRouter, stores the returned YAML recipe, normalises connector paths to the `recipes/democratic_peace/` sample data, and exports Excel/CSV outputs ready for inspection.
+Need to embed this inside notebooks or automation pipelines? Ask the CLI to emit
+runnable Python code instead of executing the recipe:
 
-3. For offline or testing scenarios, reuse the bundled response without hitting the API:
+```bash
+python -m uoa_toolkit.cli run recipes/sample.yaml \
+    --output-dir outputs/sample \
+    --emit-code --dry-run
+```
 
+The emitted snippet uses `uoa_toolkit.workflows.execute_recipe` so the same
+workflow can be orchestrated from custom scripts or schedulers.
+
+## Democratic peace automation (OpenRouter)
+
+1. Export an OpenRouter API key as `OPENROUTER_API_KEY`.
+2. Launch the automated run:
+   ```bash
+   python -m uoa_toolkit.cli auto-democratic-peace --output-dir outputs/peace
+   ```
+3. For offline validation, reuse the cached response bundled at
+   `recipes/democratic_peace/openrouter_response.yaml`:
    ```bash
    python -m uoa_toolkit.cli auto-democratic-peace \
        --response-path recipes/democratic_peace/openrouter_response.yaml \
-       --output-dir peace_outputs
+       --output-dir outputs/peace
    ```
+4. To obtain the equivalent Python script without running it, add
+   `--emit-code --dry-run`.
 
-4. To embed the democratic peace automation in another project, request the equivalent Python snippet without executing the workflow:
+The workflow reproduces an IR classic: joining conflict events, dyads, and regime
+data into an analysis-ready panel while logging the model conversation in the
+manifest.
 
-   ```bash
-   python -m uoa_toolkit.cli auto-democratic-peace \
-       --response-path recipes/democratic_peace/openrouter_response.yaml \
-       --output-dir peace_outputs \
-       --emit-code --dry-run
-   ```
+## MGIMO dataset automation
 
-### Developing new recipes
+MGIMO-affiliated datasets cannot be redistributed, but the toolkit provides a
+catalogue and downloader to stage them under `data/mgimo/`:
 
-1. Copy the sample recipe file and update dataset paths, join keys, and export preferences.
-2. CSV connector paths can be absolute or relative to the recipe file.
-3. Optionally configure `select`, `rename`, or `prefix` to control the exported column names.
+```bash
+python -m uoa_toolkit.cli download-datasets --all --output-root data/mgimo
+```
 
-### Serving the toolkit on the web
+Each dataset is resolved against authoritative URLs (Polity, COW, ATOP, ICOW,
+PRIO, etc.). When a source requires registration or license acceptance, the CLI
+emits instructions instead of attempting an unauthorised download. Pair this with
+`python -m uoa_toolkit.cli validate-mgimo` to ensure directories and checksum
+metadata are in sync.
 
-The project provides both FastAPI and Flask front-ends. They expose identical endpoints: a
-landing page at `/` and an `/api/run` POST endpoint that accepts JSON with a `recipe_path`,
-optional `output_dir`, and optional `formats` array. Responses include the manifest metadata
-and the exported file locations.
+## Programmatic usage in Python
 
-Run the FastAPI variant with Uvicorn:
+```python
+from pathlib import Path
+
+from uoa_toolkit.workflows import execute_recipe
+
+recipe = Path("recipes/sample.yaml")
+outputs = Path("outputs/sample_python")
+workflow_result = execute_recipe(recipe_path=recipe, output_dir=outputs)
+
+print(workflow_result.manifest.path)
+for export in workflow_result.exports:
+    print(export.format, export.path)
+```
+
+`execute_recipe` returns a dataclass with manifest metadata and export
+information, enabling downstream quantitative analysis pipelines to chain joins
+with statistical modelling libraries (Statsmodels, PyMC, scikit-learn, etc.).
+
+## Web interfaces
+
+FastAPI and Flask applications expose the same `/api/run` endpoint used by the
+CLI:
 
 ```bash
 uvicorn uoa_toolkit.web:create_fastapi_app --factory --reload
-```
-
-Or launch the Flask server:
-
-```bash
+# or
 flask --app uoa_toolkit.web:create_flask_app --debug run
 ```
 
-Submit the sample recipe for processing with `curl` or similar tools:
+Submit a job with `curl`:
 
 ```bash
 curl -X POST http://127.0.0.1:8000/api/run \
   -H "Content-Type: application/json" \
-  -d '{"recipe_path": "recipes/sample.yaml", "output_dir": "web_outputs"}'
+  -d '{"recipe_path": "recipes/sample.yaml", "output_dir": "outputs/web"}'
 ```
 
-The HTTP response lists the generated files and provides the dictionary and manifest records.
-
-### Working with MGIMO-sourced datasets
-
-The real-world datasets requested by the user (Polity IV, COW series, Archigos, etc.)
-are hosted on external portals and cannot be redistributed here. The toolkit now ships
-an automated downloader that targets the official sources listed in `data/README.md`.
-
-To fetch every dataset with a published direct download URL into `data/mgimo/`, run:
-
-```bash
-python -m uoa_toolkit.cli download-datasets
-```
-
-The command prints progress for each dataset. When a source requires manual steps (for
-example, the Global Terrorism Database’s licence agreement), the CLI flags the dataset
-and points to the landing page.
-
-Need to embed the workflow in another script? Ask the CLI to emit the equivalent Python
-code:
-
-```bash
-python -m uoa_toolkit.cli download-datasets --emit-code --dry-run
-```
-
-Once the downloads are present, validate and scaffold the directory layout:
-
-```bash
-python -m uoa_toolkit.cli validate-mgimo data/mgimo --create-dirs
-```
-
-Re-run the validation after extracting archives or adding new files. The command prints
-any missing or empty dataset folders and references `data/README.md` for the full
-catalogue.
+Responses contain manifest metadata and the export paths so you can chain web
+requests to notebook-based analysis or dashboards.
 
 ## Testing
 
-Run the test suite to verify the CLI and web flows end-to-end:
+Run the full automated test suite (CLI, downloader, web endpoints):
 
 ```bash
 pytest
 ```
 
-The tests build both the sample panel and the democratic peace panel in temporary directories and confirm that the Excel outputs are generated.
+The suite includes smoke tests that execute the sample recipe, democratic peace
+workflow, dataset validation, and optional FastAPI/Flask endpoint checks.
 
-## Project structure
+---
 
-- `pyproject.toml`: Project metadata and dependencies.
-- `src/uoa_toolkit/`: Source code for configuration, connectors, joins, exports, LLM helpers, and CLI entry point.
-- `recipes/`: Example recipes, OpenRouter responses, and input data for quick verification.
-- `tests/`: Automated tests.
-
-## License
-
-This project is provided as-is for demonstration purposes.
+Questions, improvements, or new datasets for IR analysis? Open an issue or adapt
+the recipes—everything needed to reproduce the pipelines is in this repository.
