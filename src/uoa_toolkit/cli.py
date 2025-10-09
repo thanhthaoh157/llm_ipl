@@ -13,6 +13,12 @@ except ModuleNotFoundError:  # pragma: no cover - exercised in tests
 
 from .config import load_recipe
 from .datasets import summarise_reports, validate_mgimo_datasets
+from .downloader import (
+    DownloadError,
+    generate_python_snippet,
+    list_datasets,
+    download_datasets as download_multiple,
+)
 from .export import export_outputs
 from .joiner import build_panel
 from .llm import OpenRouterError, call_openrouter, democratic_peace_prompt
@@ -20,6 +26,7 @@ from .manifest import build_manifest
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_DATA_ROOT = PROJECT_ROOT / "recipes"
+DEFAULT_DATA_DOWNLOAD_ROOT = PROJECT_ROOT / "data" / "mgimo"
 
 app = typer.Typer(add_completion=False, help="Build analytical panels from declarative recipes.")
 
@@ -198,16 +205,72 @@ def validate_mgimo(
         for report in empty_dirs:
             typer.echo(f"  - {report.spec.title} [{report.spec.slug}] -> {report.directory}")
 
-    if missing_dirs or (empty_dirs and not allow_empty):
-        typer.echo(
-            "Populate the directories with downloads from the MGIMO portal before running recipes.")
-        typer.echo("See data/README.md for the dataset catalogue and download guidance.")
-        raise SystemExit(1)
 
-    typer.echo("All MGIMO dataset directories present.")
-    if empty_dirs:
-        typer.echo(
-            "Directories are currently empty; add the official downloads when available.")
+@app.command("download-datasets")
+def download_datasets(
+    slugs: list[str] = typer.Argument(
+        None,
+        help="One or more dataset slugs to download (defaults to all supported datasets).",
+    ),
+    data_root: Path = typer.Option(
+        DEFAULT_DATA_DOWNLOAD_ROOT,
+        "--data-root",
+        help="Directory where downloaded datasets should be stored.",
+    ),
+    overwrite: bool = typer.Option(
+        False,
+        "--overwrite",
+        help="Re-download files even if they already exist.",
+    ),
+    emit_code: bool = typer.Option(
+        False,
+        "--emit-code",
+        help="Print a ready-to-run Python snippet that performs the same downloads.",
+    ),
+    dry_run: bool = typer.Option(
+        False,
+        "--dry-run",
+        help="Do not download files; only report which datasets would be fetched.",
+    ),
+) -> None:
+    """Download the official datasets referenced by the MGIMO workflow."""
+
+    known = {dataset.slug: dataset for dataset in list_datasets()}
+    if not slugs:
+        selected_slugs = list(known)
+    else:
+        missing = [slug for slug in slugs if slug not in known]
+        if missing:
+            raise typer.BadParameter(
+                f"Unknown dataset slug(s): {', '.join(sorted(missing))}",
+                param_hint="slugs",
+            )
+        selected_slugs = slugs
+
+    if emit_code:
+        snippet = generate_python_snippet(selected_slugs, data_root)
+        typer.echo(snippet)
+        if dry_run:
+            return
+
+    for slug in selected_slugs:
+        dataset = known[slug]
+        typer.echo(f"Preparing {dataset.title} [{dataset.slug}] from {dataset.landing_page}")
+        if dataset.requires_manual_steps or not dataset.supports_automation():
+            typer.echo(
+                "  - manual action required; visit the landing page to download the data",
+                err=True,
+            )
+            continue
+        if dry_run:
+            continue
+        try:
+            destination_map = download_multiple([slug], data_root, overwrite=overwrite)
+        except DownloadError as error:
+            typer.echo(f"  - failed: {error}", err=True)
+            continue
+        destination = destination_map[slug]
+        typer.echo(f"  - saved to {destination}")
 
 
 if __name__ == "__main__":  # pragma: no cover

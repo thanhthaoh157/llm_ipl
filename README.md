@@ -92,17 +92,35 @@ The HTTP response lists the generated files and provides the dictionary and mani
 ### Working with MGIMO-sourced datasets
 
 The real-world datasets requested by the user (Polity IV, COW series, Archigos, etc.)
-are hosted on the MGIMO data portal and cannot be redistributed in this repository.
-Instead, reserve the `data/mgimo/` directory for the official downloads and validate
-your local copy with the helper command:
+are hosted on external portals and cannot be redistributed here. The toolkit now ships
+an automated downloader that targets the official sources listed in `data/README.md`.
+
+To fetch every dataset with a published direct download URL into `data/mgimo/`, run:
+
+```bash
+python -m uoa_toolkit.cli download-datasets
+```
+
+The command prints progress for each dataset. When a source requires manual steps (for
+example, the Global Terrorism Database’s licence agreement), the CLI flags the dataset
+and points to the landing page.
+
+Need to embed the workflow in another script? Ask the CLI to emit the equivalent Python
+code:
+
+```bash
+python -m uoa_toolkit.cli download-datasets --emit-code --dry-run
+```
+
+Once the downloads are present, validate and scaffold the directory layout:
 
 ```bash
 python -m uoa_toolkit.cli validate-mgimo data/mgimo --create-dirs
 ```
 
-Re-run the command after copying the downloaded CSV/TSV/Parquet/Excel files into the
-matching subdirectories. The command prints any missing or empty dataset folders and
-references `data/README.md` for the full catalogue.
+Re-run the validation after extracting archives or adding new files. The command prints
+any missing or empty dataset folders and references `data/README.md` for the full
+catalogue.
 
 ## Testing
 

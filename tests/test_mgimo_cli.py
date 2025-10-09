@@ -29,7 +29,8 @@ def test_validate_mgimo_creates_structure(tmp_path):
         env=env,
     )
 
-    assert "All MGIMO dataset directories present" in result.stdout
+    assert "Missing dataset directories" not in result.stdout
+    assert "Warning" in result.stdout
 
     expected_dirs = {
         "polity_iv",

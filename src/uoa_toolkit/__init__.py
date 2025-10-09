@@ -8,5 +8,6 @@ __all__ = [
     "export",
     "llm",
     "datasets",
+    "downloader",
     "web",
 ]
