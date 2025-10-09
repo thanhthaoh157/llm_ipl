@@ -1,0 +1,27 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "uoa-toolkit"
+version = "0.1.0"
+description = "Utility toolkit for building unit-of-analysis panels from configurable recipes"
+authors = [{name = "LLM", email = "llm@example.com"}]
+readme = "README.md"
+requires-python = ">=3.9"
+dependencies = [
+    "polars>=0.19",
+    "duckdb>=0.9",
+    "pydantic>=2.5",
+    "typer>=0.9",
+    "pyyaml>=6.0",
+    "pandas>=2.0",
+    "openpyxl>=3.1",
+    "fastapi>=0.111",
+    "flask>=3.0",
+    "uvicorn>=0.23",
+    "httpx>=0.27",
+]
+
+[project.scripts]
+uoa-toolkit = "uoa_toolkit.cli:app"

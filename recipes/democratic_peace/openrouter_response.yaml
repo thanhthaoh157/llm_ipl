@@ -1,0 +1,28 @@
+name: Democratic peace validation panel
+description: Assemble a dyad-year panel joining militarized disputes with joint democracy indicators to explore the democratic peace hypothesis on a toy dataset.
+uoa:
+  name: dyad_year_base
+  connector:
+    type: csv
+    path: democratic_peace/dyads.csv
+  join_keys: [dyad_id, year]
+  select: [dyad_id, year, state_a, state_b]
+datasets:
+  - name: militarized_disputes
+    connector:
+      type: csv
+      path: democratic_peace/conflicts.csv
+    join_keys: [dyad_id, year]
+    rename:
+      mid_onset: has_mid
+      dispute_level: mid_level
+  - name: joint_democracy
+    connector:
+      type: csv
+      path: democratic_peace/regimes.csv
+    join_keys: [dyad_id, year]
+    select: [dyad_id, year, joint_democracy]
+output:
+  directory: democratic_peace/output
+  file_name: democratic_peace_panel.xlsx
+  formats: [excel, csv]

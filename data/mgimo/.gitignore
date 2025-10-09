@@ -1,0 +1,3 @@
+# Ignore downloaded MGIMO datasets; they may be large or restricted.
+*
+!.gitignore
