@@ -1,6 +1,7 @@
 """uoa_toolkit package."""
 
 __all__ = [
+    "codegen",
     "config",
     "connectors",
     "joiner",
@@ -10,4 +11,5 @@ __all__ = [
     "datasets",
     "downloader",
     "web",
+    "workflows",
 ]

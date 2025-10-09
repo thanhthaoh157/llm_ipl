@@ -11,6 +11,7 @@ This repository contains a minimal, recipe-driven toolkit for building unit-of-a
 - FastAPI and Flask applications that expose the same recipe execution workflow over HTTP.
 - OpenRouter integration that can draft and execute a democratic peace recipe end-to-end.
 - Smoke tests that exercise both the static sample recipe and the OpenRouter-assisted workflow.
+- CLI commands that can emit ready-to-run Python snippets for downstream automation.
 
 ## Getting started
 
@@ -35,6 +36,12 @@ python -m uoa_toolkit.cli run recipes/sample.yaml --output-dir outputs
 
 The command reads the `recipes/sample.yaml` file, joins the configured datasets, and writes Excel/CSV/Parquet outputs (including a data dictionary and manifest sheets) into the `outputs/` directory.
 
+Need to embed the same workflow in another script? Ask the CLI to emit the equivalent Python code without executing the joins:
+
+```bash
+python -m uoa_toolkit.cli run recipes/sample.yaml --output-dir outputs --emit-code --dry-run
+```
+
 ### Automating a democratic peace panel with OpenRouter
 
 1. Obtain an OpenRouter API key and expose it as `OPENROUTER_API_KEY` in your environment.
@@ -52,6 +59,15 @@ The command reads the `recipes/sample.yaml` file, joins the configured datasets,
    python -m uoa_toolkit.cli auto-democratic-peace \
        --response-path recipes/democratic_peace/openrouter_response.yaml \
        --output-dir peace_outputs
+   ```
+
+4. To embed the democratic peace automation in another project, request the equivalent Python snippet without executing the workflow:
+
+   ```bash
+   python -m uoa_toolkit.cli auto-democratic-peace \
+       --response-path recipes/democratic_peace/openrouter_response.yaml \
+       --output-dir peace_outputs \
+       --emit-code --dry-run
    ```
 
 ### Developing new recipes

@@ -4,14 +4,15 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Optional
 
-import yaml
-
 try:  # pragma: no cover - runtime import guard
     import typer
 except ModuleNotFoundError:  # pragma: no cover - exercised in tests
     from .typer_stub import typer
 
-from .config import load_recipe
+from .codegen import (
+    generate_auto_democratic_peace_snippet,
+    generate_run_snippet,
+)
 from .datasets import summarise_reports, validate_mgimo_datasets
 from .downloader import (
     DownloadError,
@@ -19,10 +20,8 @@ from .downloader import (
     list_datasets,
     download_datasets as download_multiple,
 )
-from .export import export_outputs
-from .joiner import build_panel
-from .llm import OpenRouterError, call_openrouter, democratic_peace_prompt
-from .manifest import build_manifest
+from .llm import democratic_peace_prompt
+from .workflows import execute_recipe, run_democratic_peace_workflow
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_DATA_ROOT = PROJECT_ROOT / "recipes"
@@ -31,79 +30,34 @@ DEFAULT_DATA_DOWNLOAD_ROOT = PROJECT_ROOT / "data" / "mgimo"
 app = typer.Typer(add_completion=False, help="Build analytical panels from declarative recipes.")
 
 
-def _build_panel(recipe):
-    panel = build_panel(recipe)
-    manifest = build_manifest(recipe, panel)
-    return panel, manifest
-
-
-def _prepare_recipe_file(
-    recipe_text: str,
-    destination: Path,
-    *,
-    data_root: Path,
-    output_dir: Optional[Path],
-) -> Path:
-    """Persist a generated recipe to disk and normalise connector paths."""
-
-    destination.mkdir(parents=True, exist_ok=True)
-    raw = yaml.safe_load(recipe_text)
-    if not isinstance(raw, dict):
-        raise ValueError("OpenRouter response did not contain a YAML mapping")
-
-    sections = [raw.get("uoa", {})] + list(raw.get("datasets", []))
-    for section in sections:
-        if not isinstance(section, dict):
-            continue
-        connector = section.get("connector", {})
-        path_value = connector.get("path")
-        if not path_value:
-            continue
-        candidate = Path(path_value).expanduser()
-        if not candidate.is_absolute():
-            normalized = (data_root / candidate).resolve()
-            if normalized.exists():
-                connector["path"] = str(normalized)
-
-    output_cfg = raw.setdefault("output", {})
-    if output_dir is not None:
-        output_cfg["directory"] = str(output_dir.resolve())
-    else:
-        output_cfg.setdefault("directory", str(destination.resolve()))
-    output_cfg.setdefault("file_name", "democratic_peace_panel.xlsx")
-    output_cfg.setdefault("formats", ["excel", "csv"])
-
-    recipe_path = destination / "democratic_peace.yaml"
-    with recipe_path.open("w", encoding="utf-8") as handle:
-        yaml.safe_dump(raw, handle, sort_keys=False)
-    return recipe_path
-
-
 
 @app.command()
 def run(
     recipe_path: Path = typer.Argument(..., help="Path to the YAML recipe file."),
     output_dir: Optional[Path] = typer.Option(None, "--output-dir", help="Override output directory."),
+    emit_code: bool = typer.Option(
+        False,
+        "--emit-code",
+        help="Print a Python snippet that replicates the run workflow.",
+    ),
+    dry_run: bool = typer.Option(
+        False,
+        "--dry-run",
+        help="Skip execution (useful together with --emit-code).",
+    ),
 ) -> None:
     """Execute a recipe and export the resulting panel."""
 
-    recipe = load_recipe(recipe_path)
-    if output_dir is not None:
-        recipe.output.directory = output_dir
+    if emit_code:
+        typer.echo(generate_run_snippet(recipe_path, output_dir))
+        if dry_run:
+            return
 
-    panel, manifest = _build_panel(recipe)
+    if dry_run:
+        return
 
-    export_outputs(
-        panel,
-        manifest["dictionary"],
-        manifest["entries"],
-        manifest["metadata"],
-        recipe.output.directory,
-        recipe.output.file_name,
-        recipe.output.formats,
-    )
-
-    typer.echo(f"Exported panel to {recipe.output.directory}")
+    result = execute_recipe(recipe_path, output_dir=output_dir)
+    typer.echo(f"Exported panel to {result.recipe.output.directory}")
 
 
 @app.command("auto-democratic-peace")
@@ -128,6 +82,16 @@ def auto_democratic_peace(
         "--response-path",
         help="Bypass the API and load a stored OpenRouter response (useful for tests).",
     ),
+    emit_code: bool = typer.Option(
+        False,
+        "--emit-code",
+        help="Print a Python snippet that replicates the automated workflow.",
+    ),
+    dry_run: bool = typer.Option(
+        False,
+        "--dry-run",
+        help="Skip execution (useful when only the snippet is required).",
+    ),
 ) -> None:
     """Generate and execute a democratic peace recipe via the OpenRouter API."""
 
@@ -135,41 +99,36 @@ def auto_democratic_peace(
     typer.echo("Prepared OpenRouter prompt for democratic peace recipe:")
     typer.echo(prompt)
 
-    if response_path is not None:
-        recipe_text = response_path.read_text(encoding="utf-8")
-    else:
-        try:
-            response = call_openrouter(prompt, model=model)
-        except OpenRouterError as error:
-            typer.echo(f"Failed to call OpenRouter: {error}", err=True)
-            raise typer.Exit(code=1)
-        recipe_text = response.content
+    if emit_code:
+        typer.echo(
+            generate_auto_democratic_peace_snippet(
+                model=model,
+                data_root=data_root,
+                output_dir=output_dir,
+                response_path=response_path,
+            )
+        )
+        if dry_run:
+            return
 
-    target_dir = (output_dir or (Path.cwd() / "democratic_peace_run")).resolve()
-    recipe_path = _prepare_recipe_file(
-        recipe_text,
-        target_dir,
-        data_root=data_root.resolve(),
-        output_dir=output_dir.resolve() if output_dir else None,
+    if dry_run:
+        return
+
+    try:
+        result = run_democratic_peace_workflow(
+            output_dir=output_dir,
+            model=model,
+            data_root=data_root,
+            response_path=response_path,
+            prompt=prompt,
+        )
+    except RuntimeError as error:
+        typer.echo(str(error), err=True)
+        raise typer.Exit(code=1)
+
+    typer.echo(
+        f"Generated democratic peace panel via OpenRouter into {result.recipe.output.directory}"
     )
-
-    recipe = load_recipe(recipe_path)
-    if output_dir is not None:
-        recipe.output.directory = output_dir.resolve()
-
-    panel, manifest = _build_panel(recipe)
-
-    export_outputs(
-        panel,
-        manifest["dictionary"],
-        manifest["entries"],
-        manifest["metadata"],
-        recipe.output.directory,
-        recipe.output.file_name,
-        recipe.output.formats,
-    )
-
-    typer.echo(f"Generated democratic peace panel via OpenRouter into {recipe.output.directory}")
 
 
 @app.command("validate-mgimo")
